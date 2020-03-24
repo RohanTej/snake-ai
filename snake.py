@@ -46,33 +46,31 @@ class snake(object):
         self.dirnx = 0
         self.dirny = 1
 
-    def move(self):
+    def move(self, direction):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
 
-            keys = pygame.key.get_pressed()
+        
+        if direction == 'LEFT':
+            self.dirnx = -1
+            self.dirny = 0
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-            for key in keys:
-                if keys[pygame.K_LEFT]:
-                    self.dirnx = -1
-                    self.dirny = 0
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif direction == 'RIGHT':
+            self.dirnx = 1
+            self.dirny = 0
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_RIGHT]:
-                    self.dirnx = 1
-                    self.dirny = 0
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif direction == 'UP':
+            self.dirnx = 0
+            self.dirny = -1
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
-                elif keys[pygame.K_UP]:
-                    self.dirnx = 0
-                    self.dirny = -1
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
-
-                elif keys[pygame.K_DOWN]:
-                    self.dirnx = 0
-                    self.dirny = 1
-                    self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
+        elif direction == 'DOWN':
+            self.dirnx = 0
+            self.dirny = 1
+            self.turns[self.head.pos[:]] = [self.dirnx, self.dirny]
 
         for i, c in enumerate(self.body):
             p = c.pos[:]
@@ -87,6 +85,72 @@ class snake(object):
                 elif c.dirny == 1 and c.pos[1] >= c.rows-1: c.pos = (c.pos[0], 0)
                 elif c.dirny == -1 and c.pos[1] <= 0: c.pos = (c.pos[0],c.rows-1)
                 else: c.move(c.dirnx,c.dirny)
+
+    def move_computer(self, snack):
+        # get distance between snake's head and snack       
+        distance = math.sqrt((self.head.pos[0]-snack.pos[0])**2+(self.head.pos[1]-snack.pos[1])**2)
+
+        # make snake turn to where the distance to snack is least
+        # make a psudo move to find where it would move next
+        dict_of_distance = {}
+
+        # left
+        new_distance = math.sqrt((self.head.pos[0]-snack.pos[0]-1)**2+(self.head.pos[1]-snack.pos[1])**2)
+        dict_of_distance['LEFT'] =  new_distance
+
+        # right
+        new_distance = math.sqrt((self.head.pos[0]-snack.pos[0]+1)**2+(self.head.pos[1]-snack.pos[1])**2)
+        dict_of_distance['RIGHT'] =  new_distance
+
+        # up
+        new_distance = math.sqrt((self.head.pos[0]-snack.pos[0])**2+(self.head.pos[1]-snack.pos[1]-1)**2)
+        dict_of_distance['UP'] =  new_distance
+
+        # down
+        new_distance = math.sqrt((self.head.pos[0]-snack.pos[0])**2+(self.head.pos[1]-snack.pos[1]+1)**2)
+        dict_of_distance['DOWN'] =  new_distance
+        
+        # commit that move
+        for iterator_distance in sorted(dict_of_distance.values()):
+            # check if there is a collision with body
+            collision_flag = 0
+            key_list = list(dict_of_distance.keys())
+            new_direction = key_list[list(dict_of_distance.values()).index(iterator_distance)]
+            print(new_direction)
+
+
+            dx, dy = self.head.dirnx, self.head.dirny
+            if dx == 1 and dy == 0 and new_direction == 'LEFT':
+                for x in range(len(self.body)):
+                    print("test", self.head.pos[0]+1, self.body[x].pos[0])
+                    if self.head.pos[0]+1 == self.body[x].pos[0] or self.head.pos[0]-1 == self.body[x].pos[0]:
+                        collision_flag = 1
+            elif dx == -1 and dy == 0 and new_direction == 'RIGHT':
+                for x in range(len(self.body)):
+                    print("test", self.head.pos[0]-1, self.body[x].pos[0])
+                    if self.head.pos[0]-1 == self.body[x].pos[0] or self.head.pos[0]+1 == self.body[x].pos[0]:
+                        collision_flag = 1
+            elif dx == 0 and dy == 1 and new_direction == 'UP':
+                for x in range(len(self.body)):
+                    print("test", self.head.pos[1]+1, self.body[x].pos[1])
+                    if self.head.pos[1]+1 == self.body[x].pos[1] or self.head.pos[1]-1 == self.body[x].pos[1]:
+                        collision_flag = 1
+            elif dx == 0 and dy == -1 and new_direction == 'DOWN':
+                for x in range(len(self.body)):
+                    print("test", self.head.pos[1]-1, self.body[x].pos[1])
+                    if self.head.pos[1]-1 == self.body[x].pos[1] or self.head.pos[1]+1 == self.body[x].pos[1]:
+                        collision_flag = 1
+
+            # if collision is detected, check for the next shortest move
+            if collision_flag:
+                continue
+            else:
+                self.move(new_direction)
+                break
+
+        # debug
+        print(self.head.pos[0], self.head.pos[1], " + ", snack.pos[0], snack.pos[1], distance)
+
         
 
     def reset(self, pos):
@@ -96,6 +160,8 @@ class snake(object):
         self.turns = {}
         self.dirnx = 0
         self.dirny = 1
+        self.addCube()
+        self.addCube()
 
 
     def addCube(self):
@@ -187,11 +253,12 @@ def main():
     while flag:
         pygame.time.delay(50)
         clock.tick(10)
-        s.move()
+        s.move_computer(snack)
         if s.body[0].pos == snack.pos:
             s.addCube()
             snack = cube(randomSnack(rows, s), color=(0,255,0))
 
+        # check for snake collision with it's own body
         for x in range(len(s.body)):
             if s.body[x].pos in list(map(lambda z:z.pos,s.body[x+1:])):
                 print('Score: ', len(s.body))
